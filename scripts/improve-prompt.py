@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Claude Code Prompt Improver Hook
-Intercepts user prompts and evaluates if they need enrichment before execution.
+Opt-in prompt evaluation triggered by * prefix.
+Passes through all prompts by default. When * prefix is used, evaluates if enrichment is needed.
 Uses main session context for intelligent, non-pedantic evaluation.
 """
 import json
@@ -16,19 +17,11 @@ except json.JSONDecodeError as e:
 
 prompt = input_data.get("prompt", "")
 
-# Escape quotes in prompt for safe embedding in wrapped instructions
-escaped_prompt = prompt.replace("\\", "\\\\").replace('"', '\\"')
-
-# Check for bypass conditions
-# 1. Explicit bypass with * prefix
-# 2. Slash commands (built-in or custom)
-# 3. Memorize feature (# prefix)
-if prompt.startswith("*"):
-    # User explicitly bypassed improvement - remove * prefix
-    clean_prompt = prompt[1:].strip()
-    print(clean_prompt)
-    sys.exit(0)
-
+# Check for bypass conditions and trigger
+# 1. Slash commands (built-in or custom) - always bypass
+# 2. Memorize feature (# prefix) - always bypass
+# 3. Explicit trigger with * prefix - remove * and evaluate
+# 4. All other prompts - skip evaluation
 if prompt.startswith("/"):
     # Slash command - pass through unchanged
     print(prompt)
@@ -38,6 +31,15 @@ if prompt.startswith("#"):
     # Memorize feature - pass through unchanged
     print(prompt)
     sys.exit(0)
+
+if not prompt.startswith("*"):
+    # No explicit trigger - skip evaluation
+    print(prompt)
+    sys.exit(0)
+
+# User explicitly requested evaluation with * prefix - remove * and proceed
+prompt = prompt[1:].strip()
+escaped_prompt = prompt.replace("\\", "\\\\").replace('"', '\\"')
 
 # Build the improvement wrapper
 wrapped_prompt = f"""PROMPT EVALUATION
